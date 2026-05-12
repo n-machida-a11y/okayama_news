@@ -16,20 +16,24 @@ Sub CreateSummaryReport_Append()
     Dim dict As Object, existingDict As Object
     Dim key As Variant
 
+    ' トップレベルのエラーハンドラ: 想定外のエラーは下のErrorHandlerでまとめて処理
+    On Error GoTo ErrorHandler
+
     ' --- ③ ワークシート設定 ---
     On Error Resume Next
     Set wsSource = ThisWorkbook.Sheets("表形式")
+    On Error GoTo ErrorHandler
     If wsSource Is Nothing Then
-        MsgBox "「表形式」シートが見つかりません。", vbCritical
-        Exit Sub
+        Err.Raise vbObjectError + 514, "集計マクロ", "「表形式」シートが見つかりません。"
     End If
 
+    On Error Resume Next
     Set wsDest = ThisWorkbook.Sheets("集計")
+    On Error GoTo ErrorHandler
     If wsDest Is Nothing Then
         Set wsDest = ThisWorkbook.Sheets.Add(After:=wsSource)
         wsDest.Name = "集計"
     End If
-    On Error GoTo 0
 
     '----------------------------------------------------------------------
     ' 既存データを読み込み、チェック用のリストを作成
@@ -62,11 +66,11 @@ Sub CreateSummaryReport_Append()
     valueCol = Application.Match("実績額", wsSource.Rows(1), 0)
     budgetRatioCol = Application.Match("予算比", wsSource.Rows(1), 0)
     yearRatioCol = Application.Match("前年比", wsSource.Rows(1), 0)
-    On Error GoTo 0
-    
+    On Error GoTo ErrorHandler
+
     If dateCol = 0 Or officeCol = 0 Or itemCol = 0 Or valueCol = 0 Or budgetRatioCol = 0 Or yearRatioCol = 0 Then
-        MsgBox "「表形式」シートのヘッダー（日付, 事業所, 科 目 名, 実績額, 予算比, 前年比）が見つかりません。", vbCritical
-        Exit Sub
+        Err.Raise vbObjectError + 515, "集計マクロ", _
+            "「表形式」シートのヘッダー（日付, 事業所, 科 目 名, 実績額, 予算比, 前年比）が見つかりません。"
     End If
 
     For i = 2 To sourceLastRow
@@ -146,5 +150,18 @@ Sub CreateSummaryReport_Append()
     wsDest.Select
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
+    Exit Sub
 
+' --- エラー処理 ---
+ErrorHandler:
+    Dim errNum As Long, errDesc As String
+    errNum = Err.Number
+    errDesc = Err.Description
+    Application.ScreenUpdating = True
+    Application.Calculation = xlCalculationAutomatic
+    MsgBox "「集計」マクロでエラーが発生しました。" & vbCrLf & _
+           "エラー番号: " & errNum & vbCrLf & _
+           "内容: " & errDesc, vbCritical, "エラー"
+    ' 呼び出し元（実行マクロ）に伝播させ、後続の処理と「完了」表示を抑止する
+    Err.Raise errNum, "集計マクロ", errDesc
 End Sub
