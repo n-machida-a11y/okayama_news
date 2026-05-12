@@ -112,8 +112,9 @@ Sub 表形式マクロ_最終完成版()
                         データ開始列の番号 = wsSrc.Range(データ開始列 & 1).Column
                         If Err.Number <> 0 Then
                             On Error GoTo ErrorHandler
-                            MsgBox "コード内の「データ開始列配列」に、" & データ開始列 & " という不正な列名が定義されています。", vbCritical
-                            GoTo ErrorHandler
+                            ' 詳細メッセージはErr.Descriptionに載せて一元的にErrorHandlerで表示
+                            Err.Raise vbObjectError + 513, "表形式マクロ", _
+                                "コード内の「データ開始列配列」に、" & データ開始列 & " という不正な列名が定義されています。"
                         End If
                         On Error GoTo ErrorHandler
                         
@@ -158,8 +159,15 @@ Sub 表形式マクロ_最終完成版()
 
 ' --- エラー処理 ---
 ErrorHandler:
+    Dim errNum As Long, errDesc As String
+    errNum = Err.Number
+    errDesc = Err.Description
     Application.ScreenUpdating = True
     Application.Calculation = xlCalculationAutomatic
-
+    MsgBox "「表形式」マクロでエラーが発生しました。" & vbCrLf & _
+           "エラー番号: " & errNum & vbCrLf & _
+           "内容: " & errDesc, vbCritical, "エラー"
+    ' 呼び出し元（実行マクロ）に伝播させ、後続の処理と「完了」表示を抑止する
+    Err.Raise errNum, "表形式マクロ", errDesc
 End Sub
 
