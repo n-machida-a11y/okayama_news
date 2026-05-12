@@ -67,7 +67,7 @@ Sub 表形式マクロ_最終完成版()
             
                 ' --- 日付抽出処理 ---
                 Dim 報告月 As String, 元のテキスト As String, regEx As Object, matches As Object
-                Dim 年 As String, 月 As String, 開始月 As String, 終了月 As String
+                Dim 年 As String, 月 As String, 開始月 As String, 終了月 As String, 終了年 As String
 
                 Set regEx = CreateObject("VBScript.RegExp")
                 With regEx
@@ -80,7 +80,14 @@ Sub 表形式マクロ_最終完成版()
                     Dim foundText As String: foundText = matches(0).Value
                     If InStr(foundText, "-") > 0 Then
                         年 = Left(foundText, 4): 開始月 = Mid(foundText, 5, 2): 終了月 = Mid(foundText, 8, 2)
-                        報告月 = 年 & "年" & Val(開始月) & "月～" & 年 & "年" & Val(終了月) & "月度"
+                        ' 年度跨ぎ判定: 終了月が開始月より小さい場合、終了年は翌年
+                        ' 例) 202504-03 → 2025年4月～2026年3月度
+                        If Val(終了月) < Val(開始月) Then
+                            終了年 = CStr(Val(年) + 1)
+                        Else
+                            終了年 = 年
+                        End If
+                        報告月 = 年 & "年" & Val(開始月) & "月～" & 終了年 & "年" & Val(終了月) & "月度"
                     Else
                         年 = Left(foundText, 4): 月 = Right(foundText, 2)
                         報告月 = 年 & "年" & Val(月) & "月度"
