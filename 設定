@@ -1,7 +1,7 @@
 Sub CreateSummaryReport_Append()
 
     '=================================================================
-    ' 【追記形式・最強版】既存データは残し、新しいデータのみを追加
+    ' 【追記＋更新形式】既存キー(日付|事業所)は最新値で上書き、新しいキーは末尾に追加
     '  ※特殊なスペース(NBSP)や制御文字も根こそぎ除去して取りこぼしを防ぐ
     '=================================================================
 
@@ -42,7 +42,8 @@ Sub CreateSummaryReport_Append()
             Dim existingKey As String
             existingKey = wsDest.Cells(i, "A").Value & "|" & wsDest.Cells(i, "B").Value
             If Not existingDict.Exists(existingKey) Then
-                existingDict.Add existingKey, Nothing
+                ' 値に行番号を保存することで、後で既存行の上書き先を特定する
+                existingDict.Add existingKey, i
             End If
         Next i
     End If
@@ -113,23 +114,31 @@ Sub CreateSummaryReport_Append()
         destLastRow = 1
     End If
     
-    Dim addedDataCount As Long
+    Dim addedDataCount As Long, updatedDataCount As Long
     addedDataCount = 0
+    updatedDataCount = 0
 
+    Dim writeRow As Long
     For Each key In dict.Keys
-        If Not existingDict.Exists(key) Then
+        If existingDict.Exists(key) Then
+            ' 既存行を上書き更新（同じ日付×事業所のデータが修正された場合に対応）
+            writeRow = existingDict(key)
+            updatedDataCount = updatedDataCount + 1
+        Else
+            ' 新規データは末尾に追加
             destLastRow = destLastRow + 1
-            wsDest.Cells(destLastRow, "A").Value = Split(key, "|")(0)
-            wsDest.Cells(destLastRow, "B").Value = Split(key, "|")(1)
-            wsDest.Cells(destLastRow, "C").Value = dict(key)("増減差額（円）")
-            wsDest.Cells(destLastRow, "D").Value = dict(key)("予算比収益")
-            wsDest.Cells(destLastRow, "E").Value = dict(key)("予算比費用")
-            wsDest.Cells(destLastRow, "F").Value = dict(key)("予算比差額")
-            wsDest.Cells(destLastRow, "G").Value = dict(key)("前年比収益")
-            wsDest.Cells(destLastRow, "H").Value = dict(key)("前年比費用")
-            wsDest.Cells(destLastRow, "I").Value = dict(key)("前年比差額")
+            writeRow = destLastRow
             addedDataCount = addedDataCount + 1
         End If
+        wsDest.Cells(writeRow, "A").Value = Split(key, "|")(0)
+        wsDest.Cells(writeRow, "B").Value = Split(key, "|")(1)
+        wsDest.Cells(writeRow, "C").Value = dict(key)("増減差額（円）")
+        wsDest.Cells(writeRow, "D").Value = dict(key)("予算比収益")
+        wsDest.Cells(writeRow, "E").Value = dict(key)("予算比費用")
+        wsDest.Cells(writeRow, "F").Value = dict(key)("予算比差額")
+        wsDest.Cells(writeRow, "G").Value = dict(key)("前年比収益")
+        wsDest.Cells(writeRow, "H").Value = dict(key)("前年比費用")
+        wsDest.Cells(writeRow, "I").Value = dict(key)("前年比差額")
     Next key
 
     ' --- ⑥ 終了処理 ---
